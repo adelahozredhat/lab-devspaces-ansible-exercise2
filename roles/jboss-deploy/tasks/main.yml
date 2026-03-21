@@ -1,0 +1,33 @@
+
+- name: Enabled and Restart jboss-eap service
+  ansible.builtin.systemd:
+    name: jboss-eap
+    state: stop
+    enabled: yes
+    daemon_reload: yes
+  when: jboss_eap_service.stat.exists
+
+- name: Clean old deploys information
+  ansible.builtin.file:
+    path: "/opt/jboss-eap-8.1/standalone/deployments/{{ item }}"
+    state: absent
+  loop:
+    - crash.war
+    - crash.war.failed
+    - crash.war.isdeploying
+  when: jboss_eap_service.stat.exists
+
+- name: Deploy Crash memory application in JBoss
+  ansible.builtin.copy:
+    src: "crash.war"
+    dest: "/opt/jboss-eap-8.1/standalone/deployments/"
+    owner: fedora
+    group: fedora
+    mode: '0644'
+
+- name: Enabled and Restart jboss-eap service
+  ansible.builtin.systemd:
+    name: jboss-eap
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

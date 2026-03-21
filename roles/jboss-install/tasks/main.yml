@@ -1,0 +1,43 @@
+- name: Install java-21 and unzip
+  ansible.builtin.dnf:
+    name: 
+      - java-21-openjdk-devel
+      - unzip
+      # - python-firewall
+      # - firewalld
+    state: present
+
+- name: Check if exist binaries of Jboss
+  ansible.builtin.stat:
+    path: /opt/jboss-eap-8.1/bin
+  register: jboss_dir
+
+- name: Unarchive JBoss EAP 8.1
+  ansible.builtin.unarchive:
+    src: "../jboss-eap-8.1.0-dev.zip" # Origen en tu local
+    dest: /opt/                      # Destino en la VM
+    remote_src: no                   # 'no' significa que el archivo está en el host de Ansible
+    owner: fedora
+    group: fedora
+  when: not jboss_dir.stat.exists
+
+- name: Check if JBoss service exist
+  ansible.builtin.stat:
+    path: /etc/systemd/system/jboss-eap.service
+  register: jboss_eap_service
+
+- name: Copy jboss-eap service file definition
+  ansible.builtin.copy:
+    src: "jboss-eap.service"
+    dest: /etc/systemd/system
+    owner: fedora
+    group: fedora
+    mode: '0644'
+  when: not jboss_eap_service.stat.exists
+
+- name: Enabled and Restart jboss-eap service
+  ansible.builtin.systemd:
+    name: jboss-eap
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
