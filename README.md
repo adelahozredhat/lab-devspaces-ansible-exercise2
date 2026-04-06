@@ -34,6 +34,25 @@ En el fichero de referencia hay tareas de **firewalld** comentadas; puedes activ
 
 ---
 
+## Inventario: host de la VM Fedora en OpenShift
+
+Antes de la **sección 2 (guía paso a paso del playbook monolítico)**, debes adaptar el fichero `inventory` que está en **la misma carpeta que este README**. El play apunta al grupo `[servers]`; ahí se define contra qué máquina ejecutará Ansible y con qué usuario y clave SSH se conectará.
+
+Los datos del host de tu **máquina virtual Fedora** desplegada en el entorno de laboratorio (nombre o dirección alcanzable desde OpenShift Dev Spaces, usuario SSH si difiere del de plantilla, etc.) figuran en el **Excel de datos de acceso e información general del laboratorio** que te hayan facilitado. Sustituye el valor de `ansible_host` (y, si el documento o el formador lo indican, `ansible_user` o el alias del host en la primera columna) por los que correspondan a tu asignación. Deja la ruta de `ansible_ssh_private_key_file` alineada con la clave que preparaste en «Preparación del entorno» (por ejemplo `ssh_tests_connections/id_fedora_new`).
+
+Plantilla de referencia del fichero:
+
+```ini
+[servers]
+fedora-user1 ansible_host=<host_o_IP_del_Excel> ansible_user=user1 ansible_ssh_private_key_file=ssh_tests_connections/id_fedora_new
+```
+
+Sin un inventario correcto, `ansible-playbook -i inventory …` no podrá alcanzar tu VM. Comprueba conectividad SSH desde el workspace antes de seguir con la guía.
+
+**Resultado final del bloque (inventario):** fichero `inventory` con `ansible_host` (y demás campos si aplica) coherentes con el Excel del laboratorio; el grupo `servers` resuelve a tu VM Fedora para las ejecuciones posteriores del playbook.
+
+---
+
 ## 2. Guía paso a paso (primer playbook monolítico)
 
 Objetivo: obtener un playbook equivalente al de referencia, entendiendo el **orden lógico** y el **propósito** de cada bloque. No se repite aquí la documentación de cada módulo de Ansible; consulta la documentación oficial del módulo cuando lo uses por primera vez.
@@ -383,14 +402,16 @@ Extrae los bloques anteriores a **roles** dentro del mismo proyecto de playbook 
 
 ### 4.1 Esquema sugerido de roles
 
-| Rol | Contenido típico |
-|-----|-------------------|
-| `wildfly_os_deps` | Instalación de paquetes (Java, tar, gzip). |
-| `wildfly_account` | Grupo y usuario de sistema. |
-| `wildfly_install` | Descarga, extracción, limpieza condicional del destino, enlace simbólico. |
-| `wildfly_bind` | Ajuste de `standalone.xml` para `0.0.0.0`. |
-| `wildfly_systemd` | `launch.sh`, `wildfly.service`, `/etc/wildfly`, arranque y habilitación. |
-| `wildfly_sample_app` | Bloque de empaquetado local y copia del WAR. |
+
+| Rol                  | Contenido típico                                                          |
+| -------------------- | ------------------------------------------------------------------------- |
+| `wildfly_os_deps`    | Instalación de paquetes (Java, tar, gzip).                                |
+| `wildfly_account`    | Grupo y usuario de sistema.                                               |
+| `wildfly_install`    | Descarga, extracción, limpieza condicional del destino, enlace simbólico. |
+| `wildfly_bind`       | Ajuste de `standalone.xml` para `0.0.0.0`.                                |
+| `wildfly_systemd`    | `launch.sh`, `wildfly.service`, `/etc/wildfly`, arranque y habilitación.  |
+| `wildfly_sample_app` | Bloque de empaquetado local y copia del WAR.                              |
+
 
 Puedes fusionar roles si prefieres menos granularidad; lo importante es que cada rol tenga una responsabilidad clara.
 
@@ -425,10 +446,10 @@ wf_url: "https://github.com/wildfly/wildfly/releases/download/{{ wf_version }}/w
 
 ### 4.3 Handlers
 
-Sustituye o complementa tareas que hoy mezclan “cambiar fichero” y “reiniciar servicio” con el patrón **`notify`**:
+Sustituye o complementa tareas que hoy mezclan “cambiar fichero” y “reiniciar servicio” con el patrón `**notify`**:
 
-- Handler **`recargar systemd`**: ejecuta recarga del demonio cuando cambian unidades bajo `/etc/systemd/system`.
-- Handler **`reiniciar wildfly`**: reinicia el servicio cuando cambian `wildfly.conf`, `launch.sh` o ficheros bajo `standalone/configuration` que requieran reinicio.
+- Handler `**recargar systemd**`: ejecuta recarga del demonio cuando cambian unidades bajo `/etc/systemd/system`.
+- Handler `**reiniciar wildfly**`: reinicia el servicio cuando cambian `wildfly.conf`, `launch.sh` o ficheros bajo `standalone/configuration` que requieran reinicio.
 
 En las tareas `copy` o `template` que modifiquen esos ficheros, añade `notify` con el nombre del handler. Mantén coherencia: si una tarea ya fuerza `daemon_reload` y `state: started`, al introducir handlers revisa que no dupliques reinicios innecesarios en la primera ejecución.
 
@@ -538,9 +559,9 @@ Molecule ejecuta el playbook contra un entorno efímero (contenedor, VM o delega
 
 En este repositorio existe un escenario bajo `molecule/default/` con driver **delegated** y pasos `create`, `converge`, `verify` y `destroy`. Para alinearlo con **este** ejercicio de WildFly debes, como mínimo:
 
-1. **`converge.yml`**: que importe o incluya tu playbook real (por ejemplo `deploy-wildfly.yaml` o el playbook basado en roles), no un nombre placeholder.
+1. `**converge.yml`**: que importe o incluya tu playbook real (por ejemplo `deploy-wildfly.yaml` o el playbook basado en roles), no un nombre placeholder.
 2. **Inventario / hosts**: el grupo o nombre de host del playbook debe coincidir con el definido en `molecule.yml` y en `host_vars` (por ejemplo si el play usa `hosts: servers`, el inventario de Molecule debe declarar ese grupo con el hostname de la plataforma de prueba).
-3. **`verify.yml`**: comprobar el servicio **`wildfly`** (no otro nombre de unidad), esperar al puerto **8080** y validar la URL de la aplicación de ejemplo (**`/sample/`** o la ruta que corresponda a tu WAR), con reintentos razonables.
+3. `**verify.yml`**: comprobar el servicio `**wildfly**` (no otro nombre de unidad), esperar al puerto **8080** y validar la URL de la aplicación de ejemplo (`**/sample/`** o la ruta que corresponda a tu WAR), con reintentos razonables.
 
 Instalación típica:
 
@@ -572,12 +593,112 @@ Ajusta `create.yml` y las credenciales en variables de grupo si tu entorno de la
 
 ---
 
+## 6. Firma del proyecto con `ansible-sign`
+
+[ansible-sign](https://ansible.readthedocs.io/projects/sign/en/latest/) genera un manifiesto de comprobación (SHA-256) de los ficheros que elijas del proyecto y firma ese manifiesto con GPG. Así puedes demostrar que el contenido firmado no ha sido alterado. En este curso usamos una **frase de paso GPG común** para que todos los participantes utilicen el mismo criterio al crear la clave de firma y al firmar.
+
+### Contraseña de laboratorio (frase de paso GPG)
+
+Al generar tu par de claves GPG y cuando `ansible-sign` o GnuPG te pidan la contraseña de la clave privada, utiliza **exactamente** esta frase de paso (misma para todos los asistentes al laboratorio):
+
+```text
+CorreosAnsibleSign-Lab2026
+```
+
+Es la contraseña del **contenedor de la clave GPG** (passphrase), no un usuario de sistema. Guárdala solo para el ejercicio; en entornos reales cada firmante usaría una frase de paso propia y confidencial.
+
+### 6.1 Requisitos e instalación
+
+Necesitas GnuPG (`gpg`) en el sistema y el CLI de ansible-sign, en este caso en el laboratorio ya esta instalado dentro de la imagen que usamos dentro de devspaces y no es necesario:
+
+```bash
+pip install ansible-sign
+ansible-sign --version
+```
+
+Comprueba si ya tienes una clave secreta (opcional; si no, el siguiente apartado la crea):
+
+```bash
+gpg --list-secret-keys
+```
+
+### 6.2 Par de claves GPG para firmar
+
+Si no tienes clave adecuada para firmar, créala (tipo y validez por defecto suelen bastar). Cuando solicite **passphrase**, introduce `CorreosAnsibleSign-Lab2026`.
+
+```bash
+gpg --full-generate-key
+```
+
+Anota el **identificador** de la clave (fingerprint o e-mail asociado) por si más adelante usas `ansible-sign project gpg-sign --fingerprint <ID> .`.
+
+Para **verificar** una firma hecha por otra persona necesitas su **clave pública** en tu llavero. Quien firma puede exportarla:
+
+```bash
+gpg --armor --export tu@email.del.laboratorio > lab-ansible-sign-pub.asc
+```
+
+Quien verifica la importa:
+
+```bash
+gpg --import lab-ansible-sign-pub.asc
+```
+
+Si firmas y verificas tú mismo el mismo proyecto en la misma máquina, tu clave pública ya está en tu llavero y no hace falta importar nada.
+
+### 6.3 `MANIFEST.in`: qué ficheros entran en la firma
+
+En la **raíz del proyecto** (mismo nivel que `deploy-wildfly.yaml`), crea un fichero `MANIFEST.in` siguiendo la [sintaxis de manifiestos](https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html) que usa ansible-sign. Incluye el playbook y el resto de artefactos de automatización que quieras proteger; **excluye** `inventory` si contiene datos propios de tu VM (cambian entre alumnos y romperían la verificación colectiva salvo que todos compartan el mismo contenido).
+
+Ejemplo orientativo para este repositorio:
+
+```text
+include deploy-wildfly.yaml
+include index.html
+recursive-include molecule *.yml
+exclude inventory
+```
+
+Si añades roles u otros playbooks, amplía el manifiesto con `recursive-include roles *.yml` u otras directivas `include` coherente con tu árbol.
+
+### 6.4 Firmar el proyecto
+
+Desde la raíz del proyecto:
+
+```bash
+ansible-sign project gpg-sign --prompt-passphrase .
+```
+
+Si no aparece el diálogo gráfico de GPG, `--prompt-passphrase` hace que la frase de paso se pida en terminal; introduce `CorreosAnsibleSign-Lab2026`.
+
+En entornos automatizados también se admite la variable `ANSIBLE_SIGN_GPG_PASSPHRASE` con la misma frase (útil en CI; en el curso prioriza la práctica interactiva).
+
+Salida esperada (resumida): creación o actualización de `.ansible-sign/sha256sum.txt` y la firma `.ansible-sign/sha256sum.txt.sig`.
+
+### 6.5 Verificar la firma
+
+Con el mismo proyecto (y la clave pública del firmante importada si no eres tú quien firmó):
+
+```bash
+ansible-sign project gpg-verify .
+```
+
+Debes obtener confirmación de que la **firma GPG** es válida y que las **sumas de comprobación** coinciden con los ficheros actuales. Si modificas un fichero listado en `MANIFEST.in` sin volver a firmar, la verificación fallará (comportamiento deseado).
+
+Más detalle ante errores: `ansible-sign --debug project gpg-verify .`
+
+**Resultado final del bloque (§6 — firma):** `MANIFEST.in` definido; proyecto firmado con `ansible-sign project gpg-sign`; verificación correcta con `ansible-sign project gpg-verify`; frase de paso del laboratorio usada de forma uniforme en la generación de la clave y en la firma.
+
+---
+
 ## Resumen
 
-1. Construye el playbook monolítico siguiendo los pasos de la sección 2.  
-2. Refactoriza con `tags` y `block` (sección 3).  
-3. Extrae a roles, centraliza variables y añade handlers (sección 4).  
-4. Valida con yamllint, ansible-lint y Molecule (sección 5).
+1. Configura el fichero `inventory` de esta carpeta con el host de tu VM Fedora en OpenShift según el Excel de datos de acceso e información general del laboratorio (véase la sección **Inventario** anterior a la sección 2).
+2. Construye el playbook monolítico siguiendo los pasos de la sección 2.
+3. Refactoriza con `tags` y `block` (sección 3).
+4. Extrae a roles, centraliza variables y añade handlers (sección 4).
+5. Valida con yamllint, ansible-lint y Molecule (sección 5).
+6. Firma el proyecto con `ansible-sign` y comprueba la firma con `ansible-sign project gpg-verify` (sección 6), usando la frase de paso común del laboratorio.
 
 El fichero `deploy-wildfly.yaml` del repositorio es la referencia de resultado; la práctica consiste en reproducirlo, mejorarlo estructuralmente y demostrar calidad con las herramientas anteriores.
 
@@ -585,7 +706,7 @@ El fichero `deploy-wildfly.yaml` del repositorio es la referencia de resultado; 
 
 ## Comandos auxiliares
 
-Ajusta el inventario (`inventory`) con la IP o nombre de host real del nodo y el usuario SSH correspondiente.
+El inventario debe estar ya configurado como en la sección **Inventario: host de la VM Fedora en OpenShift** (host e identidad SSH acordes con el Excel del laboratorio).
 
 ```bash
 ansible-playbook -i inventory deploy-wildfly.yaml
