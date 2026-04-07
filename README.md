@@ -290,7 +290,7 @@ Encapsula en un flujo claro: en el controlador, genera un WAR a partir de `index
     - name: Crear y desplegar la aplicación de ejemplo
       block:
         - name: Empaquetar WAR localmente
-          ansible.builtin.archive:
+          community.general.archive:
             path: index.html
             dest: /tmp/sample.war
             format: zip
@@ -375,7 +375,7 @@ Ejemplo concreto (mismo bloque que el paso 15, ya presente en el playbook de ref
     - name: Crear y desplegar la aplicación de ejemplo
       block:
         - name: Empaquetar WAR localmente
-          ansible.builtin.archive:
+          community.general.archive:
             path: index.html
             dest: /tmp/sample.war
             format: zip
