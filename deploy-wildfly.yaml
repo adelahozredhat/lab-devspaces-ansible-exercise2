@@ -105,7 +105,7 @@
     - name: Crear y desplegar la aplicación de ejemplo
       block:
         - name: Empaquetar WAR localmente
-          ansible.builtin.archive:
+          community.general.archive:
             path: index.html
             dest: /tmp/sample.war
             format: zip
