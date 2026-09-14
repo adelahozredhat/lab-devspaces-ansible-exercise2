@@ -116,7 +116,7 @@ In this lab’s practice, **`tasks/`**, **`defaults/`**, and **`meta/`** will be
 
 ## What this lab consists of
 
-**Exercise goal:** extract a role from the **`lab-devspaces-ansible-exercise2`** playbook into a **Git repository of its own** and **consume it from another playbook project** using `ansible-galaxy` and a **`requirements.yml`** file.
+**Exercise goal:** extract a role from the **`lab-devspaces-ansible-exercise1`** playbook into a **Git repository of its own** and **consume it from the previous playbook project** using `ansible-galaxy` and a **`requirements.yml`** file.
 
 As a reference, the suggested role **`wildfly_os_deps`** is used (package installation: Java, `tar`, `gzip`) from the table in section **4.1** of the exercise2 README. The same steps work for `wildfly_account`, `wildfly_install`, `wildfly_bind`, `wildfly_systemd`, or `wildfly_sample_app`, adjusting tasks, variables, and dependencies between roles.
 
@@ -140,7 +140,7 @@ As a reference, the suggested role **`wildfly_os_deps`** is used (package instal
 
 ### A.1 Create the empty repository on the forge
 
-On your Git platform, create a new repository, for example `ansible-role-wildfly-os-deps`. **Do not** initialize with a README if you are going to push an already prepared local tree (avoids conflicts on the first push).
+In this repository `lab-devspaces-ansible-exercise2`.
 
 ### A.2 Clone and structure at the repo root
 
@@ -168,7 +168,7 @@ Migrate only the tasks that belong to this role. For `wildfly_os_deps`, equivale
 - name: Instalar dependencias (Java 21+ para WildFly 39)
   ansible.builtin.dnf:
     name:
-      - java-21-openjdk-devel
+      - java-25-openjdk-devel
       - tar
       - gzip
     state: present
@@ -214,7 +214,7 @@ Adjust `author`, `license`, and `platforms` to what your organization requires.
 ### A.6 First commit and push
 
 ```bash
-cd ansible-role-wildfly-os-deps
+cd ../lab-devspaces-ansible-exercise2
 git init
 git add defaults meta tasks README.md
 git commit -m "Initial import: wildfly_os_deps role"
@@ -229,7 +229,7 @@ For stable versions, create **tags** (`v1.0.0`) and use the tag in `requirements
 
 ## Part B — Consume the role from the playbook project
 
-Work in the **playbook** directory (for example `lab-devspaces-ansible-exercise2` or a copy with only inventory and playbooks).
+Work in the previous **playbook** project directory (for example `lab-devspaces-ansible-exercise1` or a copy with only inventory and playbooks).
 
 ### B.1 Remove the duplicated role from the playbook repo (recommended)
 
@@ -246,25 +246,16 @@ If you already had `roles/wildfly_os_deps/` in the same repo as the playbook:
 ---
 roles:
   - name: wildfly_os_deps
-    src: git+<GIT_REPOSITORY_URL>
+    src: <GIT_REPOSITORY_URL>
     scm: git
     version: main
 ```
-
-Replace:
-
-- `<GIT_REPOSITORY_URL>` with the cloneable URL (HTTPS or SSH). Examples:
-  - `git+https://github.com/org/ansible-role-wildfly-os-deps.git`
-  - `git+git@gitlab.example.com:ansible/ansible-role-wildfly-os-deps.git`
-- `version` with the branch (`main`, `develop`) or with a **tag** (`v1.0.0`) for reproducible installs.
-
-Equivalent alternative format (without `git+` prefix in some environments):
 
 ```yaml
 ---
 roles:
   - name: wildfly_os_deps
-    src: https://github.com/org/ansible-role-wildfly-os-deps.git
+    src: https://<GITEA_HOST>/<GITEA_USER>/lab-devspaces-ansible-exercise2.git
     scm: git
     version: main
 ```
@@ -329,15 +320,14 @@ ansible-playbook -i inventory deploy-wildfly.yaml --check
 
 | Step | Where | Action |
 |------|--------|--------|
-| 1 | Git forge | Create the role repo (e.g. `ansible-role-wildfly-os-deps`). |
-| 2 | Role repo | `tasks/`, `defaults/`, `meta/` structure at the root. |
-| 3 | Role repo | Migrate tasks and variables from the chosen exercise2 block. |
-| 4 | Role repo | `git commit` and `git push` (and tags if you version). |
-| 5 | Playbook repo | Add `requirements.yml` with `name`, `src`, `scm`, `version`. |
-| 6 | Playbook repo | `ansible-galaxy install -r requirements.yml --roles-path ./roles`. |
-| 7 | Playbook repo | Optional: `ansible.cfg` → `roles_path = ./roles`. |
-| 8 | Playbook repo | Playbook with `roles: [ wildfly_os_deps, ... ]`. |
-| 9 | — | `ansible-playbook` with a correct inventory. |
+| 1 | Role repo | `tasks/`, `defaults/`, `meta/` structure at the root. |
+| 2 | Role repo | Migrate tasks and variables from the chosen exercise2 block. |
+| 3 | Role repo | `git commit` and `git push` (and tags if you version). |
+| 4 | Playbook repo | Add `requirements.yml` with `name`, `src`, `scm`, `version`. |
+| 5 | Playbook repo | `ansible-galaxy install -r requirements.yml --roles-path ./roles`. |
+| 6 | Playbook repo | Optional: `ansible.cfg` → `roles_path = ./roles`. |
+| 7 | Playbook repo | Playbook with `roles: [ wildfly_os_deps, ... ]`. |
+| 8 | — | `ansible-playbook` with a correct inventory. |
 
 ---
 
