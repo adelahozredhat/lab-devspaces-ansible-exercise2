@@ -2,6 +2,16 @@
 
 Curso práctico de **roles Ansible reutilizables**. **Este ejercicio está pensado para realizarse dentro de OpenShift Dev Spaces**.
 
+Versiones de la imagen (las mismas que el ejercicio 1; compruébalas en el workspace):
+
+| Herramienta | Versión en Dev Spaces |
+| ----------- | --------------------- |
+| Python | **3.12** |
+| ansible-core | **2.21.x** |
+| yamllint | **1.38.x** |
+| ansible-lint | **26.x** (p. ej. 26.6.0) |
+| Molecule | **26.x** (p. ej. 26.6.0); driver **`default`** (no existe `delegated`) |
+
 **Qué debes hacer:** **mover** el contenido del rol `wildfly_os_deps` que creaste en **`lab-devspaces-ansible-exercise1`** a **este** repositorio (`lab-devspaces-ansible-exercise2`) y **llamarlo desde el ejercicio 1** con `ansible-galaxy` y `requirements.yml`. No crees un repositorio vacío en la forja: usa el clone de exercise2, que ya tiene Git y `origin` en Gitea.
 
 ---
@@ -145,7 +155,7 @@ Los mismos pasos sirven para `wildfly_account`, `wildfly_install`, `wildfly_bind
 ## Prerrequisitos
 
 - Haber seguido **`lab-devspaces-ansible-exercise1`** hasta la **sección 4** (roles sugeridos) y tener al menos `roles/wildfly_os_deps/` (u el bloque equivalente en el playbook) en ese proyecto.
-- Trabajar **en Dev Spaces**, con `git`, `ansible`, `ansible-galaxy`, `yamllint` y `ansible-lint` (imagen del Devfile).
+- Trabajar **en Dev Spaces**, con las versiones de la tabla del inicio (`git`, `ansible`, `ansible-galaxy`, `yamllint`, `ansible-lint`, Molecule).
 - Este clone ya es un repositorio Git con `origin` en Gitea: **no** crees un repo vacío ni ejecutes `git init` / `git remote add`.
 
 ---
@@ -416,7 +426,7 @@ Revisa **toda** la salida (no solo un aviso suelto) y corrige hasta código de s
 
 Molecule ejecuta `tests/test.yml` (parte C) contra una máquina de prueba: **create** → **prepare** (lint) → **converge** (el test del rol) → **verify** (solo lo que hace **este** rol) → **destroy**.
 
-La imagen de Dev Spaces incluye **Molecule 25.5.0**. El driver se llama `default` (el nombre antiguo `delegated` ya no existe).
+La imagen de Dev Spaces incluye **Molecule 26.x** (p. ej. 26.6.0) con ansible-core **2.21** y Python **3.12**. El driver se llama `default` (el nombre antiguo `delegated` ya no existe).
 
 | Escenario | Máquina | create / destroy | Dónde |
 | --------- | ------- | ---------------- | ----- |

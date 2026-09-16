@@ -2,6 +2,16 @@
 
 Hands-on course on **reusable Ansible roles**. **This exercise is designed to be completed inside OpenShift Dev Spaces**.
 
+Image versions (the same as exercise 1; check them in the workspace):
+
+| Tool | Version in Dev Spaces |
+| ---- | --------------------- |
+| Python | **3.12** |
+| ansible-core | **2.21.x** |
+| yamllint | **1.38.x** |
+| ansible-lint | **26.x** (e.g. 26.6.0) |
+| Molecule | **26.x** (e.g. 26.6.0); driver **`default`** (`delegated` does not exist) |
+
 **What you must do:** **move** the `wildfly_os_deps` role content you created in **`lab-devspaces-ansible-exercise1`** into **this** repository (`lab-devspaces-ansible-exercise2`) and **call it from exercise 1** with `ansible-galaxy` and `requirements.yml`. Do not create an empty repository on the forge: use the exercise2 clone, which already has Git and `origin` on Gitea.
 
 ---
@@ -145,7 +155,7 @@ The same steps work for `wildfly_account`, `wildfly_install`, `wildfly_bind`, `w
 ## Prerequisites
 
 - Have followed **`lab-devspaces-ansible-exercise1`** through **section 4** (suggested roles) and have at least `roles/wildfly_os_deps/` (or the equivalent block in the playbook) in that project.
-- Work **in Dev Spaces**, with `git`, `ansible`, `ansible-galaxy`, `yamllint`, and `ansible-lint` (Devfile image).
+- Work **in Dev Spaces**, with the versions in the table at the start (`git`, `ansible`, `ansible-galaxy`, `yamllint`, `ansible-lint`, Molecule).
 - This clone is already a Git repository with `origin` on Gitea: **do not** create an empty repo or run `git init` / `git remote add`.
 
 ---
@@ -416,7 +426,7 @@ Review **the full output** (not a single warning) and fix until exit code `0`. R
 
 Molecule runs `tests/test.yml` (part C) against a test machine: **create** → **prepare** (lint) → **converge** (the role test) → **verify** (only what **this** role does) → **destroy**.
 
-The Dev Spaces image includes **Molecule 25.5.0**. The driver is named `default` (the old name `delegated` no longer exists).
+The Dev Spaces image includes **Molecule 26.x** (e.g. 26.6.0) with ansible-core **2.21** and Python **3.12**. The driver is named `default` (the old name `delegated` no longer exists).
 
 | Scenario | Machine | create / destroy | Where |
 | -------- | ------- | ---------------- | ----- |
