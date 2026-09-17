@@ -188,7 +188,7 @@ lab-devspaces-ansible-exercise2/
         └── …   # part D
 ```
 
-(`README.md`, `devfile.yaml`, and `.vscode/` already ship with the lab; leave them. Exclude them from Galaxy with `.galaxy-ignore`; see A.7. `tests/` and `molecule/` are created in parts C and D, not in the first A.7 commit.)
+(`README.md`, `devfile.yaml`, and `.vscode/` already ship with the lab; leave them. `tests/` and `molecule/` are created in parts C and D, not in the first A.7 commit. About `.galaxy-ignore`, see A.7: it does **not** stop `ansible-galaxy install` from Git from copying those files.)
 
 ### A.2 Move the content from exercise 1
 
@@ -196,12 +196,14 @@ From the workspace, copy (or cut) what you have in exercise1 into the exercise2 
 
 ```bash
 # Adjust the paths if your projects are not siblings
-cp -a ../lab-devspaces-ansible-exercise1/roles/wildfly_os_deps/tasks ./tasks
-cp -a ../lab-devspaces-ansible-exercise1/roles/wildfly_os_deps/defaults ./defaults
+mkdir -p tasks
+cp -a ../lab-devspaces-ansible-exercise1/roles/wildfly_os_deps/tasks/. ./tasks/
+# defaults/ may not exist in exercise 1 (e.g. if vars live in group_vars):
+cp -a ../lab-devspaces-ansible-exercise1/roles/wildfly_os_deps/defaults/. ./defaults/ 2>/dev/null || true
 # if you already had meta/ or vars/ in exercise 1, copy them too
 ```
 
-If in exercise 1 the role only existed as tasks inside the monolithic playbook, create the A.3–A.6 files from that block (OS dependencies: Java, `tar`, `gzip`).
+If `defaults/` was missing in exercise 1, or the role only existed as tasks inside the monolithic playbook, **create** the A.3–A.6 files by hand (OS dependencies: Java, `tar`, `gzip`). Do not assume the `defaults` `cp` will succeed.
 
 **Then**, in exercise 1, **delete** the local copy so there is a single source of truth:
 
@@ -282,7 +284,9 @@ skip_list:
 
 The remote **already exists**. Add only the role code that **already exists at this point** (A.3–A.6). **Do not** `git add tests molecule`: those folders are created in parts C and D; if they are missing, Git fails with `pathspec ... did not match any files`.
 
-Create `.galaxy-ignore` so `ansible-galaxy install` **does not** copy the lab guide, `devfile`, or `.vscode` into `roles/wildfly_os_deps/` in exercise 1:
+Create `.galaxy-ignore` (useful if you later **package** the role for Galaxy). It does **not** stop `ansible-galaxy install` with `scm: git` from cloning the whole repo: in exercise 1 you will see this `README.md`, `README_EN.md`, `devfile.yaml`, and `.vscode/` under `roles/wildfly_os_deps/`. That is expected with install-from-git. After install you may delete those files from the installed role by hand; **do not** version that folder (it is a Galaxy artifact).
+
+Also list `.ansible/` (the part C symlink) so you do not ship it if you ever package the role:
 
 ```text
 README.md
@@ -293,7 +297,7 @@ devfile.yaml
 ```
 
 ```bash
-git add defaults vars meta tasks .galaxy-ignore
+git add defaults vars meta tasks .galaxy-ignore .ansible-lint
 git commit -m "Add wildfly_os_deps role"
 git push origin HEAD
 ```
@@ -314,9 +318,11 @@ If `roles/wildfly_os_deps/` still exists in exercise1, delete it (see A.2). Othe
 
 If you version the playbook, do not commit the `roles/wildfly_os_deps` folder produced by Galaxy: it is an `ansible-galaxy install` artifact.
 
-### B.2 Create `requirements.yml` at the exercise1 root
+### B.2 `requirements.yml` at the exercise1 root
 
 **Replace** `<GITEA_HOST>` and `<GITEA_USER>` with values from **your lab access data** (Gitea URL and user, for example `lab-user-1`). Replace `master` if you pushed a different branch.
+
+If exercise 1 **already has** a `requirements.yml` (e.g. with `collections:` for Molecule), **do not replace it**: add the `roles:` block to the existing file. Rewriting it with only `roles:` drops the collections.
 
 ```yaml
 ---
@@ -340,10 +346,16 @@ Do not copy a classmate’s URL: use **your** Gitea host and **your** user.
 From `lab-devspaces-ansible-exercise1`:
 
 ```bash
-ansible-galaxy install -r requirements.yml --roles-path ./roles
+ansible-galaxy role install -r requirements.yml --roles-path ./roles
 ```
 
-Check that `roles/wildfly_os_deps/tasks/main.yml` exists.
+`--roles-path` makes Galaxy **ignore** `collections:` in the same `requirements.yml` (you will see a warning). Install collections separately if you need them:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+Check that `roles/wildfly_os_deps/tasks/main.yml` exists. It is normal for README/`devfile`/`.vscode` to appear as well (Git install; see A.7).
 
 ### B.4 Configure `ansible.cfg` (recommended)
 
@@ -382,11 +394,12 @@ Inventory: use the IP from **your lab access data** (see the exercise 1 README).
 
 ```bash
 ansible-playbook -i inventory deploy-wildfly.yaml --syntax-check
-ansible-playbook -i inventory deploy-wildfly.yaml --check
 ansible-playbook -i inventory deploy-wildfly.yaml
 ```
 
-The real run must complete WildFly and `/sample/` as in exercise 1; `wildfly_os_deps` only changes **where** that role comes from.
+`--syntax-check` only validates YAML/the play. The **real** run must complete WildFly and `/sample/` as in exercise 1; `wildfly_os_deps` only changes **where** that role comes from.
+
+Do not use `--check` on the **full** WildFly playbook: the task that packages the WAR on localhost does not write `/tmp/sample.war` in check mode, and the following copy fails (`Could not find or access '/tmp/sample.war'`). `--check` on the **role test** (part C) is fine, because it only installs RPMs.
 
 ---
 
@@ -413,7 +426,7 @@ roles_path = .ansible/roles
 host_key_checking = False
 ```
 
-`.ansible/` is local (it is in `.galaxy-ignore`); you do not need to version it.
+`.ansible/` is local: do not version it (add it to `.gitignore` in this repo). `.galaxy-ignore` does **not** stop Git from cloning it when installing the role; do not `git add` the symlink either.
 
 ```yaml
 ---
@@ -428,14 +441,14 @@ host_key_checking = False
 
 Use the exercise 1 inventory (IP from your lab access data). The SSH key in that file is usually `ssh_tests_connections/id_fedora_new`: that path is **relative to the working directory**. If you run the playbook **from exercise2**, SSH cannot find the key (`No such file or directory`).
 
-Fix the exercise 1 `inventory` so the key is anchored to `inventory_dir` (works from exercise1 and from exercise2):
+Fix the exercise 1 `inventory` so the key is anchored to `inventory_dir` (works from exercise1 and from exercise2). In an **INI** inventory the `{{ }}` braces **must be quoted**; otherwise Ansible fails with `Expected key=value host variable assignment, got: inventory_dir` and `--syntax-check` can still exit **0** (empty inventory, only `localhost`):
 
 ```ini
 [servers]
-fedora-user1 ansible_host=<IP_from_your_lab_access_data> ansible_user=user1 ansible_ssh_private_key_file={{ inventory_dir }}/ssh_tests_connections/id_fedora_new
+fedora-user1 ansible_host=<IP_from_your_lab_access_data> ansible_user=user1 ansible_ssh_private_key_file="{{ inventory_dir }}/ssh_tests_connections/id_fedora_new"
 ```
 
-Replace host, IP, and user with **your** data. Then, from `lab-devspaces-ansible-exercise2`:
+Replace host, IP, and user with **your** data. Confirm the inventory resolves (`ansible -i … servers -m ping`) **before** trusting `--syntax-check`. Then, from `lab-devspaces-ansible-exercise2`:
 
 ```bash
 ansible-playbook -i ../lab-devspaces-ansible-exercise1/inventory tests/test.yml --syntax-check
@@ -476,8 +489,8 @@ The Dev Spaces image includes **Molecule 26.x** (e.g. 26.6.0) with ansible-core 
 
 | Scenario | Machine | create / destroy | Where |
 | -------- | ------- | ---------------- | ----- |
-| `default` | **New** Fedora VM on OpenShift (KubeVirt) | Creates the VM at the start and **destroys** it at the end | **Only from Dev Spaces** |
-| `with_existing_machine` | **Pre-started** lab Fedora (exercise 1 inventory) | Does not create or delete that VM | Dev Spaces, against your Fedora |
+| `default` | **New** Fedora VM on OpenShift (KubeVirt) | Creates the VM at the start and **destroys** it at the end | **Only from Dev Spaces**. **Optional and advanced**: YAML copied from exercise 1 is **not** enough (namespace, VMI IP, SSH key). |
+| `with_existing_machine` | **Pre-started** lab Fedora (exercise 1 inventory) | Does not create or delete that VM | Dev Spaces, against your Fedora. **This is the scenario you must complete** in class. |
 
 **What this role verifies:** Java (`java-25-openjdk-devel`), `tar`, and `gzip` packages. **Do not** check the `wildfly` service, port 8080, or `/sample/`: those belong to other exercise 1 roles.
 
@@ -491,7 +504,9 @@ mkdir -p molecule/default molecule/with_existing_machine
 
 ### D.1 Scenario `default` — test VM on OpenShift (Dev Spaces only)
 
-Same idea as **section 5.3.1 of exercise 1**: `create.yml` / `destroy.yml` / `molecule_vars.yml` provision and remove a Fedora VM on KubeVirt. Copy those three files from exercise1 or reproduce them the same way (driver `name: default`, `ocp_*` credentials from **your** lab access data, classroom `namespace`).
+Same idea as **section 5.3.1 of exercise 1**, with the same traps if you copy the skeleton as-is: `namespace: my-namespace` does not exist; `wait_for` against `localhost` is not the VMI; the Fedora image does **not** include `id_fedora_new` and may not use `ansible_user: fedora`; do not push `molecule_vars.yml` to Gitea.
+
+Use `default` **only** if the instructor gives you a real namespace, VMI IP, and SSH user. In class the scenario that completes the exercise is `with_existing_machine` (D.2).
 
 ##### `molecule/default/molecule.yml`
 
@@ -594,34 +609,40 @@ Assertions for **this** role only:
       changed_when: false
 ```
 
-**Create / destroy:** the same `molecule/default/create.yml`, `destroy.yml`, and `molecule_vars.yml` as in exercise 1 (`oc` login, KubeVirt VM, delete at the end). The `default` scenario is run **only from Dev Spaces**.
+**Create / destroy:** the same `molecule/default/create.yml`, `destroy.yml`, and `molecule_vars.yml` as in exercise 1 **after you adapt them** (real namespace, VMI IP as `ansible_host`, SSH user/key). The `default` scenario is run **only from Dev Spaces** and is not part of the minimum classroom checklist.
 
 ### D.2 Scenario `with_existing_machine` — lab VM
 
 Copy `prepare.yml`, `converge.yml`, and `verify.yml` from the `default` scenario. `create.yml` / `destroy.yml` must not create or power off the student’s Fedora (same pattern as exercise 1: a `debug` message only).
 
-In `molecule.yml` use `driver.name: default` with `managed: false` and `ansible_host` from **your lab access data** (the IP in the exercise1 `inventory`; `127.0.0.1:2222` is only a tunnel example). The SSH key must be reachable **from exercise2**: point it at `../lab-devspaces-ansible-exercise1/ssh_tests_connections/id_fedora_new` (or use the same absolute/`inventory_dir` path as in C.2).
+In `molecule.yml` use `driver.name: default` with `managed: false`. `ansible_host` is the IP from **your lab access data** (the same as the exercise1 `inventory`) and port **22**. In this classroom Dev Spaces reaches the Fedora VM **directly**; `127.0.0.1:2222` only applies if the instructor asked for an **SSH tunnel**. If you copy those values as-is, Molecule will not connect.
+
+The SSH key must be reachable **from exercise2**, for example:
+
+```yaml
+ansible_ssh_private_key_file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/../lab-devspaces-ansible-exercise1/ssh_tests_connections/id_fedora_new"
+```
 
 ### D.3 Run Molecule
 
 From the **`lab-devspaces-ansible-exercise2`** root:
 
 ```bash
-# new VM on OpenShift; destroyed at the end (Dev Spaces only)
-molecule test -s default
-
-# lab Fedora; not deleted
+# lab Fedora; not deleted (classroom scenario)
 molecule test -s with_existing_machine
+
+# new VM on OpenShift; destroyed at the end (Dev Spaces only, and only if you adapted create.yml)
+molecule test -s default
 ```
 
-Step by step (debugging), `default` scenario:
+Step by step (debugging), `with_existing_machine` scenario:
 
 ```bash
-molecule create -s default
-molecule prepare -s default
-molecule converge -s default
-molecule verify -s default
-molecule destroy -s default
+molecule create -s with_existing_machine
+molecule prepare -s with_existing_machine
+molecule converge -s with_existing_machine
+molecule verify -s with_existing_machine
+molecule destroy -s with_existing_machine
 ```
 
 After `destroy` on `default`, that test VM **must no longer** exist in OpenShift. After `destroy` on `with_existing_machine`, the student’s Fedora **stays running**.
@@ -635,28 +656,28 @@ After `destroy` on `default`, that test VM **must no longer** exist in OpenShift
 | 1 | exercise2 | `tasks/`, `defaults/`, `vars/`, `meta/`, `tests/` at the root of **this** repo. |
 | 2 | exercise1 → exercise2 | **Move** `roles/wildfly_os_deps` content (or the equivalent block) into exercise2. |
 | 3 | exercise1 | **Delete** local `roles/wildfly_os_deps`. |
-| 4 | exercise2 | `.galaxy-ignore` + `git add` only what exists (`defaults vars meta tasks .galaxy-ignore`); `commit` and `git push origin HEAD`. `tests/` and `molecule/` in a later commit. |
-| 5 | exercise1 | `requirements.yml` with `src: https://<GITEA_HOST>/<GITEA_USER>/lab-devspaces-ansible-exercise2.git` (**replace** host, user, and branch). |
-| 6 | exercise1 | `ansible-galaxy install -r requirements.yml --roles-path ./roles`. |
+| 4 | exercise2 | `.galaxy-ignore` + `git add` only what exists (`defaults vars meta tasks .galaxy-ignore .ansible-lint`); `commit` and `git push origin HEAD`. `tests/` and `molecule/` in a later commit. Do not push `.ansible/`. |
+| 5 | exercise1 | Add `roles:` to `requirements.yml` (do not drop `collections:` if they were already there) with `src` from **your** Gitea. |
+| 6 | exercise1 | `ansible-galaxy role install -r requirements.yml --roles-path ./roles` (and `collection install` separately if needed). |
 | 7 | exercise1 | **Complete** playbook: external `wildfly_os_deps` + remaining **local** exercise 1 roles. |
-| 8 | exercise2 | `ansible.cfg` + `.ansible/roles/wildfly_os_deps` symlink, `tests/test.yml` (role by **name**), inventory with `inventory_dir`, `yamllint` + `ansible-lint`. |
-| 9 | exercise2 | Molecule: `converge` = role test; `verify` = Java/tar/gzip; `default` create/destroy on OpenShift (Dev Spaces only). |
-| 10 | exercise1 | Full `ansible-playbook` (WildFly + `/sample/`) with the correct inventory. |
+| 8 | exercise2 | `ansible.cfg` + `.ansible/roles/wildfly_os_deps` symlink, `tests/test.yml` (role by **name**), INI inventory with **quoted** `inventory_dir`, `yamllint` + `ansible-lint`. |
+| 9 | exercise2 | Molecule `with_existing_machine`: `converge` = role test; `verify` = Java/tar/gzip. `default` (KubeVirt) is optional. |
+| 10 | exercise1 | **Real** `ansible-playbook` (WildFly + `/sample/`); do not `--check` the full playbook. |
 
 ---
 
 ## Practical notes
 
 - **Always replace** Gitea host, user, and branch; do not leave `<GITEA_HOST>` / `<GITEA_USER>` placeholders.
-- **Private roles:** HTTPS often needs a token; in Dev Spaces the lab Gitea is usually reachable with your user.
+- **Private roles:** HTTPS often needs a token; on the lab Gitea, `ansible-galaxy install` from Git usually works without an extra token.
 - **Dependency order:** if `wildfly_install` depends on another role, use `dependencies` in `meta/main.yml` or the order in the playbook `roles:`.
-- **CI/CD:** `ansible-galaxy install -r requirements.yml` before `ansible-playbook`.
-- **Galaxy:** without `.galaxy-ignore`, the role installed in exercise1 includes this README, `devfile.yaml`, and `.vscode/`.
-- **Inventory from exercise2:** use `{{ inventory_dir }}/ssh_tests_connections/id_fedora_new` in the exercise 1 `inventory`; a cwd-relative path will not resolve the key.
+- **CI/CD:** `ansible-galaxy role install -r requirements.yml --roles-path ./roles` (and `collection install` if the file also lists collections) before `ansible-playbook`.
+- **Galaxy / Git:** `.galaxy-ignore` does not apply to a clone; the installed role will include README, `devfile.yaml`, and `.vscode/`. Do not version `roles/wildfly_os_deps/` in exercise1.
+- **Inventory from exercise2:** use `ansible_ssh_private_key_file="{{ inventory_dir }}/ssh_tests_connections/id_fedora_new"` (**quoted**) in the exercise 1 INI `inventory`; a cwd-relative path will not resolve the key, and without quotes the inventory will not even parse.
 
 ---
 
 ## Expected result
 
-- **`lab-devspaces-ansible-exercise2`** contains the role (tasks, defaults, vars, meta, tests), passes yamllint/ansible-lint, the role test, and Molecule (`default` creates and destroys the VM; `verify` checks only this role).
+- **`lab-devspaces-ansible-exercise2`** contains the role (tasks, defaults, vars, meta, tests), passes yamllint/ansible-lint, the role test, and Molecule `with_existing_machine` (`verify` checks only this role). The `default` scenario is optional and does not work if copied as-is from exercise 1.
 - **`lab-devspaces-ansible-exercise1`** no longer versions `roles/wildfly_os_deps`; it declares that role in `requirements.yml` and the playbook runs the **full installation** (external role + local exercise 1 roles).
