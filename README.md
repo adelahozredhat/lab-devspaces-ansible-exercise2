@@ -531,6 +531,8 @@ La plataforma se llama `fedora-mol-<usuario>` y vive en `virtualization-test-<us
 ---
 dependency:
   name: galaxy
+  options:
+    requirements-file: requirements.yml
 driver:
   name: default
 platforms:
